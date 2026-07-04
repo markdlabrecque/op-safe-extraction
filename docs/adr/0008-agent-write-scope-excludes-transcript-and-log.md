@@ -1,0 +1,3 @@
+# Agent's write access is confined to docs/; transcript and classification log live outside its reach
+
+The disclosure report's integrity depends on the transcript and classification log being untamperable by the agent whose behavior they record. We decided the agent's write tools are scoped to this project's `docs/` folder only, for authoring its report — nothing else. The transcript and classification log are written outside that scope entirely (for now, under `/tmp`, since this is a test run; revisit before this handles real secrets, since `/tmp` is cleared on reboot and any process on the machine can read it). The agent has no path, direct or indirect, to modify the evidence its own report is checked against.

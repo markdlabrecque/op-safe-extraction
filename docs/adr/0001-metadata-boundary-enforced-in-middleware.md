@@ -1,0 +1,3 @@
+# Metadata boundary is enforced in middleware, not by prompting the agent
+
+The agent needs to query 1Password item labels and metadata without ever seeing field values, even though it's a test run with non-secret data. Prompting the LLM not to read values is not a real security boundary — a confused or adversarially-influenced agent could still leak them. We decided the value/metadata split is enforced by a middleware/tool layer that calls the 1Password CLI/SDK, strips out `value` fields from the response, and only serializes labels, types, item titles, vaults, and tags into the LLM's context. Real field values never enter the model's context window.

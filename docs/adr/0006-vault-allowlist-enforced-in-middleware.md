@@ -1,0 +1,3 @@
+# Vault access is gated by an explicit, middleware-enforced allowlist
+
+The agent will eventually need to reach arbitrary vaults, but must never be able to reach a vault it hasn't been explicitly routed to. We decided vault access is controlled by an allowlist of vault IDs, checked in the middleware itself (not left to an `op --vault` flag that could be omitted or misconfigured) — any request against a vault not on the list is rejected, fail closed. Today the allowlist has exactly one entry: the test vault used for development. Expanding scope later means adding vault IDs to the allowlist, not changing enforcement logic.
