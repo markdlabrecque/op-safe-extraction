@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "op-safe-extraction": {
+      "command": "node",
+      "args": ["dist/server.js"],
+      "env": {
+        "VAULT_ALLOWLIST": "<comma-separated vault IDs, e.g. from `op vault list --format json`>"
+      }
+    }
+  }
+}
