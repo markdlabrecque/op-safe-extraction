@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { listVaultsRaw, listItemsRaw, getItemRaw } from './op.js';
 import { getAllowlist, assertVaultAllowed } from './vaults.js';
 import { isFieldSafe } from './classify.js';
@@ -47,10 +48,12 @@ export interface MappedUrl {
 export function mapUrls(urls: unknown): MappedUrl[] {
   if (!Array.isArray(urls)) return [];
   return urls
-    .filter((u): u is OpUrl => !!u && typeof u === 'object' && typeof (u as OpUrl).href === 'string')
+    .filter((u): u is OpUrl & { href: string } => !!u && typeof u === 'object' && typeof (u as OpUrl).href === 'string')
     .map((u) => ({
-      label: u.label ?? 'website',
-      href: isFieldSafe({ type: 'URL' }) ? u.href! : '[REDACTED]',
+      // `label` is whatever op emitted; coerce anything non-string to the
+      // default so MappedUrl.label is a string at runtime, not just in types.
+      label: typeof u.label === 'string' && u.label !== '' ? u.label : 'website',
+      href: isFieldSafe({ type: 'URL' }) ? u.href : '[REDACTED]',
       primary: u.primary === true,
     }));
 }
@@ -100,20 +103,29 @@ export async function getItem(vaultId: string, itemId: string) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const one = mapUrls([{ label: 'website', href: 'https://prod.example.com', primary: true }]);
-  console.assert(one.length === 1, 'a single url is mapped');
-  console.assert(one[0].href === 'https://prod.example.com', 'safe url passes through unredacted');
-  console.assert(one[0].primary === true, 'primary flag preserved');
+  assert.deepStrictEqual(
+    mapUrls([{ label: 'website', href: 'https://prod.example.com', primary: true }]),
+    [{ label: 'website', href: 'https://prod.example.com', primary: true }],
+    'a safe url is mapped through unchanged',
+  );
 
   const unlabelled = mapUrls([{ href: 'ssh://box.example.com' }]);
-  console.assert(unlabelled[0].label === 'website', 'missing label defaults to website');
-  console.assert(unlabelled[0].primary === false, 'missing primary defaults to false');
+  assert.strictEqual(unlabelled[0].label, 'website', 'missing label defaults to website');
+  assert.strictEqual(unlabelled[0].primary, false, 'missing primary defaults to false');
 
-  console.assert(mapUrls(undefined).length === 0, 'missing urls yields empty list');
-  console.assert(mapUrls([]).length === 0, 'empty urls yields empty list');
-  console.assert(mapUrls('nope' as unknown).length === 0, 'non-array urls yields empty list');
-  console.assert(mapUrls([{ label: 'broken' }]).length === 0, 'entry without href is skipped');
-  console.assert(mapUrls([null, { href: 'https://a.example' }]).length === 1, 'null entries skipped');
-  console.assert(mapUrls([{ href: 'https://a.example' }, { href: 'https://b.example' }]).length === 2, 'multiple urls mapped');
+  // op's JSON is not schema-guaranteed, so label must be coerced, not trusted.
+  assert.strictEqual(typeof mapUrls([{ label: 42, href: 'https://a.example' }])[0].label, 'string', 'numeric label coerced to string');
+  assert.strictEqual(mapUrls([{ label: 42, href: 'https://a.example' }])[0].label, 'website', 'numeric label falls back to default');
+  assert.strictEqual(mapUrls([{ label: null, href: 'https://a.example' }])[0].label, 'website', 'null label falls back to default');
+  assert.strictEqual(mapUrls([{ label: '', href: 'https://a.example' }])[0].label, 'website', 'empty label falls back to default');
+  assert.strictEqual(mapUrls([{ primary: 'yes', href: 'https://a.example' }])[0].primary, false, 'truthy non-boolean primary is not treated as true');
+
+  assert.strictEqual(mapUrls(undefined).length, 0, 'missing urls yields empty list');
+  assert.strictEqual(mapUrls([]).length, 0, 'empty urls yields empty list');
+  assert.strictEqual(mapUrls('nope').length, 0, 'non-array urls yields empty list');
+  assert.strictEqual(mapUrls([{ label: 'broken' }]).length, 0, 'entry without href is skipped');
+  assert.strictEqual(mapUrls([null, undefined, { href: 'https://a.example' }]).length, 1, 'null and undefined entries skipped');
+  assert.strictEqual(mapUrls([{ href: 'https://a.example' }, { href: 'https://b.example' }]).length, 2, 'multiple urls mapped');
+
   console.log('tools self-check passed');
 }
