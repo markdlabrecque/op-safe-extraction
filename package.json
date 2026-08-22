@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "report": "tsx scripts/disclosure-report.ts"
+    "report": "tsx scripts/disclosure-report.ts",
+    "check": "tsx src/classify.ts && tsx src/vaults.ts && tsx src/op.ts && tsx src/tools.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
