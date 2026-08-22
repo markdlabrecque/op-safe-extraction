@@ -4,7 +4,8 @@
       "command": "node",
       "args": ["dist/server.js"],
       "env": {
-        "VAULT_ALLOWLIST": "<comma-separated vault IDs, e.g. from `op vault list --format json`>"
+        "VAULT_ALLOWLIST": "<comma-separated vault IDs, e.g. from `op vault list --format json`>",
+        "ITEM_CATEGORY_DENYLIST": "<optional: comma-separated item categories to exclude, e.g. DATABASE,SSH_KEY>"
       }
     }
   }

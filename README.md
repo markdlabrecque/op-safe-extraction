@@ -29,6 +29,13 @@ is where it is.
 4. Set `VAULT_ALLOWLIST` to a comma-separated list of those vault IDs. Any
    vault not on this list is visible by name but denied on item/field access
    (ADR-0006, ADR-0007).
+5. Optionally set `ITEM_CATEGORY_DENYLIST` to a comma-separated list of item
+   categories this integration should never surface, e.g.
+   `ITEM_CATEGORY_DENYLIST=DATABASE,SSH_KEY`. Unset means nothing is denied.
+   Matching is case-insensitive and folds spaces and hyphens to underscores, so
+   `SSH_KEY`, `SSH Key`, and `ssh-key` are equivalent. Entries matching no known
+   1Password category deny nothing, so the server warns about them on stderr at
+   startup (ADR-0011).
 
 ## Running
 
@@ -38,14 +45,20 @@ in your shell before launching.
 
 ```sh
 VAULT_ALLOWLIST=<vault-id> npm start
+
+# excluding categories this deployment should never touch
+VAULT_ALLOWLIST=<vault-id> ITEM_CATEGORY_DENYLIST=DATABASE,SSH_KEY npm start
 ```
 
 ## Tools
 
-All four are read-only against 1Password (ADR-0005):
+All four are read-only against 1Password (ADR-0005). The three item tools all
+enforce `ITEM_CATEGORY_DENYLIST` — `get_item` included, so a denied item cannot
+be fetched by passing its id directly (ADR-0011):
 
 - `list_vaults` — every vault's id/name, plus whether it's allowlisted.
 - `list_items(vaultId)` — titles, tags, categories in an allowlisted vault.
+  Denied categories are omitted, not returned redacted.
 - `search_items(vaultId, query?, tags?)` — same, filtered by title text and/or tags.
 - `get_item(vaultId, itemId)` — full item metadata. Sensitive fields (type
   `CONCEALED`/`SSHKEY`, purpose `PASSWORD`/`NOTES`) come back as

@@ -2,6 +2,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { listVaults, listItems, searchItems, getItem } from './tools.js';
+import { warnUnknownDenylistEntries } from './categories.js';
+
+// stderr only - stdout carries the MCP protocol.
+warnUnknownDenylistEntries();
 
 const server = new McpServer({ name: 'op-safe-extraction', version: '0.1.0' });
 
@@ -16,7 +20,7 @@ server.tool(
 
 server.tool(
   'list_items',
-  'List item titles, tags, and categories in an allowlisted vault. No field values.',
+  'List item titles, tags, and categories in an allowlisted vault. No field values. Categories denied by ITEM_CATEGORY_DENYLIST are omitted.',
   { vaultId: z.string() },
   async ({ vaultId }) => json(await listItems(vaultId)),
 );
@@ -30,7 +34,7 @@ server.tool(
 
 server.tool(
   'get_item',
-  'Get full metadata for one item in an allowlisted vault. Sensitive field values (passwords, passkeys, SSH keys, notes) are redacted.',
+  'Get full metadata for one item in an allowlisted vault. Sensitive field values (passwords, passkeys, SSH keys, notes) are redacted. Rejects items whose category is denied by ITEM_CATEGORY_DENYLIST.',
   { vaultId: z.string(), itemId: z.string() },
   async ({ vaultId, itemId }) => json(await getItem(vaultId, itemId)),
 );

@@ -3,6 +3,7 @@ import { listVaultsRaw, listItemsRaw, getItemRaw } from './op.js';
 import { getAllowlist, assertVaultAllowed } from './vaults.js';
 import { isFieldSafe, secretReason } from './classify.js';
 import { logClassification } from './log.js';
+import { isCategoryDenied, assertCategoryAllowed } from './categories.js';
 
 export async function listVaults() {
   const vaults = await listVaultsRaw();
@@ -13,12 +14,14 @@ export async function listVaults() {
 export async function listItems(vaultId: string) {
   assertVaultAllowed(vaultId);
   const items = await listItemsRaw(vaultId);
-  return items.map((i) => ({ id: i.id, title: i.title, tags: i.tags ?? [], category: i.category }));
+  return items
+    .filter((i) => !isCategoryDenied(i.category))
+    .map((i) => ({ id: i.id, title: i.title, tags: i.tags ?? [], category: i.category }));
 }
 
 export async function searchItems(vaultId: string, query?: string, tags?: string[]) {
   assertVaultAllowed(vaultId);
-  let items = await listItemsRaw(vaultId);
+  let items = (await listItemsRaw(vaultId)).filter((i) => !isCategoryDenied(i.category));
   if (tags?.length) {
     items = items.filter((i) => tags.every((t) => (i.tags ?? []).includes(t)));
   }
@@ -61,6 +64,11 @@ export function mapUrls(urls: unknown): MappedUrl[] {
 export async function getItem(vaultId: string, itemId: string) {
   assertVaultAllowed(vaultId);
   const item = await getItemRaw(vaultId, itemId);
+  // Enforced here too, not just in the listing tools: without this the denylist
+  // is bypassed by passing a known item id directly. Checked before any field
+  // is classified or logged, so a denied item leaves no trace and returns
+  // nothing (ADR-0011).
+  assertCategoryAllowed(item.category);
   const fields = (item.fields ?? [])
     .filter((f: any) => f.purpose !== 'NOTES') // notes dropped entirely, never even a redacted stub
     .map((f: any) => {
