@@ -26,6 +26,10 @@ Middleware classifies each field by 1Password's own `type`/`purpose` attributes,
 A second check applied to any value the type/purpose gate would otherwise pass. Redacts structural credential markers (PEM blocks, SSH key blobs, known vendor token prefixes, JWTs, URIs with embedded credentials), multi-line blocks in single-line fields, and long undelimited high-entropy blobs. Safe-value shapes (URL, hostname, IP, port, email, `user@host`) are matched first and never treated as blobs. Exists because `type: STRING` records which widget the user chose, not what they pasted into it. Unlike the type allowlist, this is a heuristic with false negatives, not a hard boundary — see ADR-0010.
 _Avoid_: Secret scanner (implies completeness this does not have)
 
+**Category denylist**:
+An explicit, middleware-enforced list of 1Password item categories (`ITEM_CATEGORY_DENYLIST`) this integration will not surface at all. Enforced in every item-facing tool including `get_item`, so a denied item cannot be reached by id. Unset denies nothing. Distinct from the **vault allowlist**, which gates whole vaults rather than kinds of items, and from the **field classification allowlist**, which is a sensitivity judgement about values — a category denial says nothing about whether an item's contents are secret, only that this deployment does not want them fetched. Matching is case-insensitive and folds whitespace and hyphens to underscores, because a denylist entry that fails to match denies nothing (ADR-0011).
+_Avoid_: Category filter (understates that this is enforced, not a convenience), blocklist
+
 **Classification log**:
 A record the middleware appends to on every run: for each field it processes, the item id, field label, type/purpose, its safe/redacted decision, and for content-based redactions the reason the gate fired. Never contains the real value.
 _Avoid_: Audit log (too generic)
