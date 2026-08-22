@@ -80,8 +80,10 @@ export function secretReason(value: unknown): string | null {
   }
 
   // Multi-line free text in a single-line field type is unexpected; treat a
-  // pasted block as suspect rather than passing it through.
-  if (/\r?\n/.test(v)) return 'multiline-block';
+  // pasted block as suspect rather than passing it through. Matches any line
+  // break, not just LF: a bare CR (classic Mac, or a deliberately crafted
+  // value) is still a line break and must not slip past.
+  if (/[\r\n\u2028\u2029]/.test(v)) return 'multiline-block';
 
   if (KNOWN_SAFE_SHAPES.some((re) => re.test(v))) return null;
 
@@ -202,6 +204,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   assert.strictEqual(secretReason('   '), null, 'whitespace value is not secret');
   assert.strictEqual(secretReason(42), null, 'non-string value is not secret');
   assert.strictEqual(isFieldSafe({ type: 'STRING', value: undefined }), true, 'STRING with no value stays safe');
+
+  // Every line-break form counts, or a value could evade the gate by using one
+  // the regex missed.
+  assert.strictEqual(secretReason('first\r\nsecond'), 'multiline-block', 'CRLF is a multiline block');
+  assert.strictEqual(secretReason('first\nsecond'), 'multiline-block', 'LF is a multiline block');
+  assert.strictEqual(secretReason('first\rsecond'), 'multiline-block', 'bare CR is a multiline block');
+  assert.strictEqual(secretReason('first\u2028second'), 'multiline-block', 'line separator is a multiline block');
+  assert.strictEqual(secretReason('first\u2029second'), 'multiline-block', 'paragraph separator is a multiline block');
 
   // A long human sentence is prose, not a blob - whitespace is the tell.
   assert.strictEqual(
