@@ -37,7 +37,10 @@ All four are read-only against 1Password (ADR-0005):
   `CONCEALED`/`SSHKEY`, purpose `PASSWORD`/`NOTES`) come back as
   `[REDACTED]`; everything else (username, URL, email, phone, address) is
   passed through as-is. The allowlist is fail-closed — any field type not
-  explicitly known-safe is redacted (`src/classify.ts`).
+  explicitly known-safe is redacted (`src/classify.ts`). A Login item's
+  website(s) live in `item.urls` rather than `item.fields`, and are returned
+  in a separate `urls` array (label, href, primary), classified and logged the
+  same way.
 
 ## Data disclosure report
 
