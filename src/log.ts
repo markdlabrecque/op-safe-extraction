@@ -15,6 +15,9 @@ export interface ClassificationRecord {
   fieldType?: string;
   fieldPurpose?: string;
   decision: 'safe' | 'redacted';
+  // Why the value was redacted, when a content heuristic caught it rather than
+  // the type/purpose allowlist (ADR-0010). Never contains the value itself.
+  reason?: string;
 }
 
 export function logClassification(record: ClassificationRecord): void {

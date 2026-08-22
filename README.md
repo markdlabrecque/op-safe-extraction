@@ -40,12 +40,17 @@ All four are read-only against 1Password (ADR-0005):
   explicitly known-safe is redacted (`src/classify.ts`). A Login item's
   website(s) live in `item.urls` rather than `item.fields`, and are returned
   in a separate `urls` array (label, href, primary), classified and logged the
-  same way.
+  same way. Values that pass the type check are gated again on content, so
+  credential material pasted into a plain text field (PEM blocks, SSH keys,
+  vendor tokens, JWTs, URIs with embedded credentials, long high-entropy blobs)
+  is redacted too. That second gate is a heuristic, not a hard boundary — see
+  ADR-0010.
 
 ## Data disclosure report
 
 Every `get_item` call appends a classification record (item, field, type,
-decision — never the real value) to `/tmp/op-safe-extraction/classification-log.jsonl`,
+decision, and for content-based redactions a reason — never the real value) to
+`/tmp/op-safe-extraction/classification-log.jsonl`,
 outside the agent's write scope. After a session, check whether anything
 sensitive actually made it into the transcript:
 

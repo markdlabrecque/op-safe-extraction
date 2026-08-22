@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { listVaultsRaw, listItemsRaw, getItemRaw } from './op.js';
 import { getAllowlist, assertVaultAllowed } from './vaults.js';
-import { isFieldSafe } from './classify.js';
+import { isFieldSafe, secretReason } from './classify.js';
 import { logClassification } from './log.js';
 
 export async function listVaults() {
@@ -53,7 +53,7 @@ export function mapUrls(urls: unknown): MappedUrl[] {
       // `label` is whatever op emitted; coerce anything non-string to the
       // default so MappedUrl.label is a string at runtime, not just in types.
       label: typeof u.label === 'string' && u.label !== '' ? u.label : 'website',
-      href: isFieldSafe({ type: 'URL' }) ? u.href : '[REDACTED]',
+      href: isFieldSafe({ type: 'URL', value: u.href }) ? u.href : '[REDACTED]',
       primary: u.primary === true,
     }));
 }
@@ -65,6 +65,7 @@ export async function getItem(vaultId: string, itemId: string) {
     .filter((f: any) => f.purpose !== 'NOTES') // notes dropped entirely, never even a redacted stub
     .map((f: any) => {
       const safe = isFieldSafe(f);
+      const reason = safe ? undefined : (secretReason(f.value) ?? undefined);
       logClassification({
         ts: new Date().toISOString(),
         vaultId,
@@ -74,6 +75,7 @@ export async function getItem(vaultId: string, itemId: string) {
         fieldType: f.type,
         fieldPurpose: f.purpose,
         decision: safe ? 'safe' : 'redacted',
+        reason,
       });
       return { label: f.label, type: f.type, value: safe ? f.value : '[REDACTED]' };
     });
@@ -88,6 +90,7 @@ export async function getItem(vaultId: string, itemId: string) {
       fieldLabel: u.label,
       fieldType: 'URL',
       decision: u.href === '[REDACTED]' ? 'redacted' : 'safe',
+      reason: u.href === '[REDACTED]' ? 'url-content-gate' : undefined,
     });
   }
 

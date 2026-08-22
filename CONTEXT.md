@@ -20,6 +20,10 @@ _Avoid_: Secret, credential (too broad — notes are "sensitive" here without ne
 
 Middleware classifies each field by 1Password's own `type`/`purpose` attributes, not by label text (labels are freeform and can't be trusted). Allowlisted as safe: `STRING`, `URL`, `EMAIL`, `PHONE`, `ADDRESS`, `purpose: USERNAME`. Everything else — including any field type not explicitly allowlisted — is treated as sensitive and redacted. `notesPlain` is dropped regardless of type.
 
+**Content gate**:
+A second check applied to any value the type/purpose gate would otherwise pass. Redacts structural credential markers (PEM blocks, SSH key blobs, known vendor token prefixes, JWTs, URIs with embedded credentials), multi-line blocks in single-line fields, and long undelimited high-entropy blobs. Safe-value shapes (URL, hostname, IP, port, email, `user@host`) are matched first and never treated as blobs. Exists because `type: STRING` records which widget the user chose, not what they pasted into it. Unlike the type allowlist, this is a heuristic with false negatives, not a hard boundary — see ADR-0010.
+_Avoid_: Secret scanner (implies completeness this does not have)
+
 **Classification log**:
 A record the middleware appends to on every run: for each field it processes, the item id, field label, type/purpose, and its safe/redacted decision. Never contains the real value.
 _Avoid_: Audit log (too generic)
