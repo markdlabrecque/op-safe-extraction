@@ -96,9 +96,15 @@ export function looksSecret(value: unknown): boolean {
   return secretReason(value) !== null;
 }
 
+// An unsafe type vetoes a safe purpose (issue #5). Previously a safe purpose
+// returned early, so { type: 'SSHKEY', purpose: 'USERNAME' } was classified
+// safe. When the two signals disagree, take the cautious one - that is what
+// fail-closed means, and it removes a case where the guarantee rested on
+// 1Password never emitting such a combination.
 function typeAllows(field: OpField): boolean {
   if (field.purpose && ALWAYS_SENSITIVE_PURPOSES.has(field.purpose)) return false;
-  if (field.purpose && SAFE_PURPOSES.has(field.purpose)) return true;
+  const typeIsSafe = !field.type || SAFE_TYPES.has(field.type);
+  if (field.purpose && SAFE_PURPOSES.has(field.purpose)) return typeIsSafe;
   return !!field.type && SAFE_TYPES.has(field.type);
 }
 
@@ -121,6 +127,16 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   assert.strictEqual(isFieldSafe({ type: 'CREDIT_CARD_NUMBER' }), false, 'card number fails closed');
   assert.strictEqual(isFieldSafe({ type: 'string' }), false, 'type match is case-sensitive, lowercase fails closed');
   assert.strictEqual(isFieldSafe({ purpose: 'username' }), false, 'purpose match is case-sensitive, lowercase fails closed');
+
+  // --- an unsafe type vetoes a safe purpose (issue #5) ---
+  assert.strictEqual(isFieldSafe({ type: 'SSHKEY', purpose: 'USERNAME' }), false, 'SSHKEY type vetoes USERNAME purpose');
+  assert.strictEqual(isFieldSafe({ type: 'CONCEALED', purpose: 'USERNAME' }), false, 'CONCEALED type vetoes USERNAME purpose');
+  assert.strictEqual(isFieldSafe({ type: 'OTP', purpose: 'USERNAME' }), false, 'unrecognised type vetoes USERNAME purpose');
+  assert.strictEqual(isFieldSafe({ type: 'STRING', purpose: 'USERNAME' }), true, 'safe type and safe purpose still pass');
+  assert.strictEqual(isFieldSafe({ type: 'EMAIL', purpose: 'USERNAME' }), true, 'email-typed username still passes');
+  assert.strictEqual(isFieldSafe({ purpose: 'USERNAME' }), true, 'safe purpose with no type still passes');
+  // Precedence between the two purpose sets is unchanged: sensitive wins.
+  assert.strictEqual(isFieldSafe({ type: 'STRING', purpose: 'PASSWORD' }), false, 'sensitive purpose still beats safe type');
 
   // --- safe values must still pass: this is the project's whole point ---
   const safeValues = [

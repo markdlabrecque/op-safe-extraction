@@ -18,7 +18,7 @@ _Avoid_: Secret, credential (too broad — notes are "sensitive" here without ne
 
 ## Classification mechanism
 
-Middleware classifies each field by 1Password's own `type`/`purpose` attributes, not by label text (labels are freeform and can't be trusted). Allowlisted as safe: `STRING`, `URL`, `EMAIL`, `PHONE`, `ADDRESS`, `purpose: USERNAME`. Everything else — including any field type not explicitly allowlisted — is treated as sensitive and redacted. `notesPlain` is dropped regardless of type.
+Middleware classifies each field by 1Password's own `type`/`purpose` attributes, not by label text (labels are freeform and can't be trusted). Allowlisted as safe: `STRING`, `URL`, `EMAIL`, `PHONE`, `ADDRESS`, `purpose: USERNAME`. Everything else — including any field type not explicitly allowlisted — is treated as sensitive and redacted. `notesPlain` is dropped regardless of type. The two signals are combined conservatively: a sensitive `purpose` overrides a safe `type`, and an unsafe `type` overrides a safe `purpose` — when they disagree, the cautious reading wins.
 
 **Content gate**:
 A second check applied to any value the type/purpose gate would otherwise pass. Redacts structural credential markers (PEM blocks, SSH key blobs, known vendor token prefixes, JWTs, URIs with embedded credentials), multi-line blocks in single-line fields, and long undelimited high-entropy blobs. Safe-value shapes (URL, hostname, IP, port, email, `user@host`) are matched first and never treated as blobs. Exists because `type: STRING` records which widget the user chose, not what they pasted into it. Unlike the type allowlist, this is a heuristic with false negatives, not a hard boundary — see ADR-0010.
